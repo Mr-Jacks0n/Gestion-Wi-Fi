@@ -138,12 +138,15 @@ jobs:
 
       - name: Créer le fichier .env de test
         run: |
-          cat << 'EOF' > .env
+          cat << 'EOF' > .env.local
+          SECRET_KEY=test-secret-key-for-ci-only-not-production
           POSTGRES_USER=advens
           POSTGRES_PASSWORD=advens_secret
           POSTGRES_DB=advens_manager
           DATABASE_URL=postgresql://advens:advens_secret@postgres:5432/advens_manager
-          SECRET_KEY=test-secret-key-for-ci-only
+          REDIS_PASSWORD=ci_redis_test
+          REDIS_URL=redis://:ci_redis_test@redis:6379/0
+          RATE_LIMIT_ENABLED=false
           EOF
 
       - name: Démarrer les services
