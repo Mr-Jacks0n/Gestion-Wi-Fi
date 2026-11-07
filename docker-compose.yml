@@ -1,14 +1,16 @@
+version: "3.9"
+
 services:
   postgres:
     image: postgres:16-alpine
     container_name: advens_db
-    env_file: .env
+    env_file: .env.local
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -17,20 +19,65 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    mem_limit: 512m
+    cpus: "1.0"
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend-network
+    # PostgreSQL optimization for indexes
+    command: >
+      postgres
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c work_mem=64MB
+      -c maintenance_work_mem=64MB
+
+  # Redis for caching, sessions, and Celery broker
+  redis:
+    image: redis:7-alpine
+    container_name: advens_redis
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    ports:
+      - "127.0.0.1:6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: "0.5"
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend-network
+    command: sh -c 'redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass "$$REDIS_PASSWORD"'
 
   backend:
     build: ./backend
     container_name: advens_backend
-    env_file: .env
+    env_file: .env.local
     environment:
+      PYTHONPATH: /app
       DATABASE_URL: ${DATABASE_URL}
       SECRET_KEY: ${SECRET_KEY}
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/1
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/2
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
+      - ./backend:/app
       - uploads_data:/app/uploads
+      - ./backups:/app/backups
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     healthcheck:
@@ -40,12 +87,68 @@ services:
       retries: 5
       start_period: 15s
     restart: unless-stopped
+    mem_limit: 1024m
+    cpus: "2.0"
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend-network
+
+  # Celery worker for async tasks
+  celery_worker:
+    build: ./backend
+    container_name: advens_celery
+    env_file: .env.local
+    environment:
+      PYTHONPATH: /app
+      DATABASE_URL: ${DATABASE_URL}
+      SECRET_KEY: ${SECRET_KEY}
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/1
+    volumes:
+      - ./backend:/app
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=4
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: "1.0"
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend-network
+
+  # Celery beat for scheduled tasks
+  celery_beat:
+    build: ./backend
+    container_name: advens_beat
+    env_file: .env.local
+    environment:
+      PYTHONPATH: /app
+      DATABASE_URL: ${DATABASE_URL}
+      SECRET_KEY: ${SECRET_KEY}
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      CELERY_RESULT_BACKEND: redis://:${REDIS_PASSWORD}@redis:6379/1
+    volumes:
+      - ./backend:/app
+    command: celery -A app.celery_app beat --loglevel=info
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: "0.5"
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend-network
 
   frontend:
     build: ./frontend
     container_name: advens_frontend
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
       backend:
         condition: service_healthy
@@ -57,25 +160,70 @@ services:
       retries: 3
       start_period: 5s
     restart: unless-stopped
+    mem_limit: 512m
+    cpus: "1.0"
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend-network
 
   nginx:
     image: nginx:alpine
     container_name: advens_nginx
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - nginx_cache:/var/cache/nginx
     depends_on:
       backend:
         condition: service_healthy
       frontend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80 > /dev/null 2>&1 || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- --no-check-certificate https://127.0.0.1:443 > /dev/null 2>&1 || wget -qO- http://127.0.0.1:80 > /dev/null 2>&1 || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
+    mem_limit: 256m
+    cpus: "0.5"
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend-network
+
+  wireguard:
+    image: linuxserver/wireguard:latest
+    container_name: advens_vpn
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Africa/Abidjan
+      - SERVERURL=192.168.1.100
+      - SERVERPORT=51820
+      - PEERS=3
+      - PEERDNS=auto
+      - INTERNAL_SUBNET=10.0.0.0
+      - ALLOWED_IPS=10.0.0.0/24,172.18.0.0/16
+    ports:
+      - "51820:51820/udp"
+    volumes:
+      - wireguard_config:/config
+      - /lib/modules:/lib/modules
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: "0.5"
+    security_opt:
+      - no-new-privileges:true
 
   ngrok:
     image: ngrok/ngrok:latest
@@ -87,7 +235,24 @@ services:
       nginx:
         condition: service_healthy
     restart: unless-stopped
+    mem_limit: 128m
+    cpus: "0.25"
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend-network
 
 volumes:
   postgres_data:
   uploads_data:
+  wireguard_config:
+  nginx_cache:
+  redis_data:
+
+networks:
+  backend-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.18.0.0/16
+

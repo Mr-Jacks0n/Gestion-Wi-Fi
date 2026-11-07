@@ -1,0 +1,191 @@
+# =====================================================================
+# docker-compose.prod.yml — Configuration de production
+# =====================================================================
+# Utilise Docker Secrets pour les données sensibles
+# Déployer avec: docker stack deploy -c docker-compose.prod.yml wifi
+# =====================================================================
+
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: advens_db_prod
+    # Les secrets sont injectés via le mécanisme *_FILE de l'image officielle
+    # (le fichier /run/secrets/... est lu par l'entrypoint, sa valeur FINIT
+    # en env var) — cf. docker-entrypoint.sh file_env().
+    environment:
+      POSTGRES_USER_FILE: /run/secrets/postgres_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_DB: advens_manager
+    # NOTE : TLS postgres (ssl=on) nécessite de monter cert/key dédiés.
+    # À réactiver après génération de certificats DB spécifiques :
+    #   POSTGRES_INITDB_ARGS: "-c ssl=on -c ssl_cert_file=/var/lib/postgresql/server.crt -c ssl_key_file=/var/lib/postgresql/server.key"
+    # Restrict to internal network ONLY
+    networks:
+      - backend-network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # Ne pas dépendre du nom d'utilisateur (injecté par secret)
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -d advens_manager"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: on-failure:5
+    mem_limit: 1024m
+    cpus: "2.0"
+    secrets:
+      - postgres_user
+      - postgres_password
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1024M
+        reservations:
+          cpus: '1.0'
+          memory: 512M
+
+  backend:
+    image: wifi-backend:latest
+    container_name: advens_backend_prod
+    environment:
+      # Placeholders écrasés par l'entrypoint ci-dessous (les valeurs
+      # réelles sont lues depuis les fichiers Docker Secrets).
+      DATABASE_URL: from_secret
+      SECRET_KEY: from_secret
+    networks:
+      - backend-network
+    volumes:
+      - uploads_data:/app/uploads
+      - ./backups:/app/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Les secrets Docker sont des FICHIERS : on exporte leur contenu en
+    # variables d'environnement (sinon l'app recevrait le chemin littéral).
+    command:
+      - sh
+      - -c
+      - >-
+        export DATABASE_URL="$$(cat /run/secrets/database_url)"
+        SECRET_KEY="$$(cat /run/secrets/secret_key)";
+        exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/docs\")' 2>/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: on-failure:5
+    mem_limit: 2048m
+    cpus: "2.0"
+    secrets:
+      - database_url
+      - secret_key
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+        reservations:
+          cpus: '1.0'
+          memory: 1024M
+
+  frontend:
+    image: wifi-frontend:latest
+    container_name: advens_frontend_prod
+    networks:
+      - backend-network
+    depends_on:
+      backend:
+        condition: service_healthy
+    command: serve -s dist -l 3000
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000 > /dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: on-failure:5
+    mem_limit: 512m
+    cpus: "1.0"
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  nginx:
+    image: nginx:alpine
+    container_name: advens_nginx_prod
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - backend-network
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - nginx_cache:/var/cache/nginx
+    depends_on:
+      - backend
+      - frontend
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80 > /dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: on-failure:5
+    mem_limit: 512m
+    cpus: "1.0"
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+volumes:
+  postgres_data:
+    driver: local
+  uploads_data:
+    driver: local
+  nginx_cache:
+    driver: local
+
+networks:
+  backend-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.18.0.0/16
+
+secrets:
+  postgres_user:
+    external: true
+  postgres_password:
+    external: true
+  database_url:
+    external: true
+  secret_key:
+    external: true
