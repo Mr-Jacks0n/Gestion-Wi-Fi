@@ -2,6 +2,14 @@
 .env
 .env.*
 !.env.example
+!backend/.env.example
+
+# Données sensibles locales (clients, clés privées, dumps)
+backups/
+wireguard_clients/
+nginx/certs/
+backend/backups/
+backend/upload
 
 # Python
 __pycache__/
@@ -32,4 +40,44 @@ dist/
 Thumbs.db
 .gemini/
 frontend/dist-tsconfig/
+
+
+# Local run (sans Docker)
+.run-logs/
+
+# ─────────────────────────────────────────────────────────────
+# Données de travail locales / forensique — JAMAIS dans le dépôt
+# (dumps PostgreSQL crash-récupérés, codes extraits, tests manuels)
+# ─────────────────────────────────────────────────────────────
+backend/wal_*.txt
+backend/wal_*.bin
+backend/*.bin
+backend/extracted_codes.txt
+backend/search_*.txt
+backend/search_transcript.py
+backend/find_exports.py
+backend/pg_files.txt
+backend/check_pg_file.sh
+backend/copy_wal.sh
+backend/dump_wal.sh
+backend/extract_wal_raw.sh
+backend/install_dirtyread.sh
+backend/strings_wal.sh
+backend/restore_database.py
+backend/restore_from_audit.py
+backend/analyze_audit.py
+backend/test_*.py
+backend/clean_test_data.py
+backend/create_sales_archive.py
+backend/migrations_optimization.sql
+backend/celerybeat-schedule*
+headers.txt
+out.pdf
+theme_ui/
+SECURITY_CORRECTIONS_SUMMARY.txt
+SECURITY_IMPROVEMENTS.md
+generate-certs.sh
+generate-certs.ps1
+setup_dns.sh
+run_security_scan.ps1
 

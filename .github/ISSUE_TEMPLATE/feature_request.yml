@@ -1,0 +1,30 @@
+name: ✨ Feature request
+description: Propose an improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What's the pain point today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Backend (FastAPI)
+        - Frontend (React)
+        - Dashboard / stats
+        - Sales / caisse
+        - Tickets import
+        - Wave payment / QR
+        - Backups / scheduler
+        - Installation (install-ubuntu.sh / Docker)

@@ -1,0 +1,66 @@
+Copyright (c) 2026 Adven's Center. All rights reserved.
+
+Adven's Manager — Wi-Fi ticket management & sales platform
+Source code, designs and documentation.
+
+---------------------------------------------------------------------
+
+OWNERSHIP
+---------
+
+This software and its accompanying source code are the exclusive
+property of Adven's Center. All rights not expressly granted below
+are reserved.
+
+PERMITTED USE
+-------------
+
+You may use this code, at no charge, for the internal business
+operations of Adven's Center, including its Wi-Fi hotspot sales
+activity at any number of locations operated by Adven's Center.
+
+WHAT YOU MAY NOT DO
+-------------------
+
+1. Copy, distribute, sublicense, sell or lease the software or its
+   source code, in whole or in part, without the prior written
+   permission of the copyright holder.
+2. Publish or re-host the source code on any public or private
+   repository without written permission.
+3. Remove or alter this notice, the credits, or any branding
+   ("Adven's Center", "Adven's Manager") from the software or its
+   user interfaces.
+4. Use the name of Adven's Center, the name "Adven's Manager" or any
+   contributor identities to promote or endorse third-party products
+   without written consent.
+
+THIRD-PARTY COMPONENTS
+----------------------
+
+This software builds upon third-party packages licensed under their
+own terms — notably FastAPI, SQLAlchemy, Pydantic, Alembic, Pillow,
+qrcode, React, TypeScript, Vite, Zustand, PostgreSQL, Redis, Celery,
+Nginx and Docker. Nothing in this license restricts those components
+under their respective open-source licenses. The corresponding
+notices and license texts remain applicable to those components.
+
+DERIVED WORKS
+-------------
+
+Modifications developed by Adven's Center staff belong to
+Adven's Center. Pull requests submitted to this repository grant
+Adven's Center a perpetual, worldwide, royalty-free license to use,
+modify and incorporate the contributed code into this and future
+versions of the software.
+
+CONTACT
+-------
+
+Licensing questions: open a private discussion through the GitHub
+repository of this project. Commercial licensing available on
+request.
+
+⚠️  This project is published publicly for transparency, hiring
+    portfolio and collaboration purposes. Publication does NOT make
+    the code open-source: no license granting reuse outside
+    Adven's Center is granted.
