@@ -24,19 +24,19 @@ end-to-end.*
 
 ---
 
-## ✨ What it does
+## What it does
 
 | | |
 |---|---|
-| 🎟️ **Ticket inventory** | Import lots of Wi-Fi tickets (Excel/paste), automatic duplicate detection, FIFO assignment to vendors, per-vendor stock |
-| 💰 **Point of sale** | Cash / **Wave** (QR code + merchant number) / credit sales, instant ticket delivery with WhatsApp sharing |
-| 📱 **Smartphone access** | The backend serves the app and generates a QR code — staff scan it and get the PWA on their phone (« Add to home screen ») |
-| 🖥️ **Desktop app feel** | `install-ubuntu.sh` turns the stack into real Ubuntu programs: systemd services + dedicated app window in the dock |
-| 🔐 **Security-first** | Strict RBAC, authenticated file uploads, rate limiting, hardened QR upload validation, full audit trail — see [Security](#-security) |
-| 📊 **Insights** | Live dashboard, sales trend, hour-by-hour peak analysis, vendor performance reports, PDF/Excel exports |
-| ♻️ **Ops** | Resupply approval workflow, register closure summaries, immutable sales history, automated backups |
+| **Ticket inventory** | Import lots of Wi-Fi tickets (Excel/paste), automatic duplicate detection, FIFO assignment to vendors, per-vendor stock |
+| **Point of sale** | Cash / **Wave** (QR code + merchant number) / credit sales, instant ticket delivery with WhatsApp sharing |
+| **Smartphone access** | The backend serves the app and generates a QR code — staff scan it and get the PWA on their phone (« Add to home screen ») |
+| **Desktop app feel** | `install-ubuntu.sh` turns the stack into real Ubuntu programs: systemd services + dedicated app window in the dock |
+| **Security-first** | Strict RBAC, authenticated file uploads, rate limiting, hardened QR upload validation, full audit trail — see [Security](#-security) |
+| **Insights** | Live dashboard, sales trend, hour-by-hour peak analysis, vendor performance reports, PDF/Excel exports |
+| **Ops** | Resupply approval workflow, register closure summaries, immutable sales history, automated backups |
 
-## 📸 Screenshots
+## Screenshots
 
 | Dashboard | Tickets |
 |---|---|
