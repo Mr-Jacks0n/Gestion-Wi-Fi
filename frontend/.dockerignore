@@ -1,6 +1,9 @@
 node_modules
+dist
+dist-tsconfig
 .git
 .gitignore
 .env
+.env.*
 npm-debug.log
 .DS_Store
