@@ -16,6 +16,9 @@ import SalesPage from './pages/SalesPage';
 import ResupplyPage from './pages/ResupplyPage';
 import ReportsPage from './pages/ReportsPage';
 import SettingsPage from './pages/SettingsPage';
+import AuditLogsPage from './pages/AuditLogsPage';
+import ExpensesPage from './pages/ExpensesPage';
+import ClosuresPage from './pages/ClosuresPage';
 
 import './index.css';
 
@@ -97,9 +100,26 @@ export default function App() {
             }
           />
           <Route path="sales" element={<SalesPage />} />
+          <Route path="closures" element={<ClosuresPage />} />
           <Route path="resupply" element={<ResupplyPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route
+            path="audit-logs"
+            element={
+              <AdminRoute>
+                <AuditLogsPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="expenses"
+            element={
+              <AdminRoute>
+                <ExpensesPage />
+              </AdminRoute>
+            }
+          />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

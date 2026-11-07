@@ -3,12 +3,13 @@
    ============================================================ */
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { CreditCard, Plus, Edit, Trash2, Upload, X, Lock, Wifi, History } from 'lucide-react';
+import { CreditCard, Plus, Edit, Trash2, Upload, X, Lock, Wifi, History, Zap, RefreshCw, Database, Download, QrCode, Copy } from 'lucide-react';
 import api from '../lib/api';
 import { useAuthStore } from '../store/authStore';
+import SecureImage from '../components/SecureImage';
 import type { PaymentMethod, SubscriptionType } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '');
 
 export default function SettingsPage() {
   const { user, addToast } = useAuthStore();
@@ -18,6 +19,18 @@ export default function SettingsPage() {
   const [subTypes, setSubTypes] = useState<SubscriptionType[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [downloadingBackup, setDownloadingBackup] = useState(false);
+  const [backupFiles, setBackupFiles] = useState<any[]>([]);
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [triggeringBackup, setTriggeringBackup] = useState(false);
+
+  // Automation settings
+  const [autoSettings, setAutoSettings] = useState<{key: string; value: string; label: string; description?: string}[]>([]);
+  const [autoEditing, setAutoEditing] = useState<{[key: string]: string}>({});
+  const [autoSaving, setAutoSaving] = useState<string | null>(null);
+  const [triggerLoading, setTriggerLoading] = useState<string | null>(null);
+  // Accès smartphone (mode installé) : URL LAN + QR code du backend
+  const [accessInfo, setAccessInfo] = useState<{ url: string; qrUrl: string } | null>(null);
 
   // Password change
   const [currentPwd, setCurrentPwd] = useState('');
@@ -33,23 +46,100 @@ export default function SettingsPage() {
   const [showST, setShowST] = useState(false);
   const [stName, setStName] = useState('');
   const [stDays, setStDays] = useState('');
+  const [stUnit, setStUnit] = useState<'hours' | 'days'>('hours');
   const [stPrice, setStPrice] = useState('');
   const [editStId, setEditStId] = useState<number | null>(null);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); loadAccessInfo(); }, []);
+
+  const loadBackups = async () => {
+    if (!isAdmin) return;
+    setBackupLoading(true);
+    try {
+      const res = await api.get('/api/settings/backups');
+      setBackupFiles(res.data);
+    } catch (err) {
+      console.error('Erreur chargement backups:', err);
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  const handleTriggerBackup = async () => {
+    setTriggeringBackup(true);
+    try {
+      const res = await api.post('/api/settings/backups/trigger');
+      addToast(`✅ ${res.data.message} : ${res.data.filename}`, 'success');
+      loadBackups();
+    } catch (err: any) {
+      addToast(err.response?.data?.detail || 'Erreur lors de la sauvegarde', 'error');
+    } finally {
+      setTriggeringBackup(false);
+    }
+  };
+
+  const handleDownloadBackup = async (filename: string) => {
+    try {
+      const token = localStorage.getItem('token') || '';
+      const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '');
+      const response = await fetch(`${API_BASE}/api/settings/backups/download/${encodeURIComponent(filename)}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(new Blob([blob], { type: 'application/json' }));
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+      addToast(`Fichier "${filename}" téléchargé`, 'success');
+    } catch (err: any) {
+      addToast(`Erreur téléchargement : ${err.message}`, 'error');
+    }
+  };
+
+  const handleDeleteBackup = async (filename: string) => {
+    if (!confirm(`Supprimer définitivement "${filename}" ?`)) return;
+    try {
+      await api.delete(`/api/settings/backups/${encodeURIComponent(filename)}`);
+      addToast('Fichier supprimé', 'success');
+      loadBackups();
+    } catch (err: any) {
+      addToast(err.response?.data?.detail || 'Erreur', 'error');
+    }
+  };
 
   const loadData = async () => {
     try {
-      const [pmRes, stRes, auditRes] = await Promise.all([
+      const [pmRes, stRes, auditRes, autoRes] = await Promise.all([
         isAdmin ? api.get('/api/settings/payment-methods') : api.get('/api/settings/payment-methods/active'),
         api.get('/api/tickets/subscription-types'),
         isAdmin ? api.get('/api/settings/audit-logs') : Promise.resolve({ data: [] }),
+        isAdmin ? api.get('/api/automation/settings') : Promise.resolve({ data: [] }),
       ]);
       setPaymentMethods(pmRes.data);
       setSubTypes(stRes.data);
       if (isAdmin) setAuditLogs(auditRes.data);
+      if (isAdmin) setAutoSettings(autoRes.data);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
+  };
+
+  const loadAccessInfo = async () => {
+    try {
+      const res = await api.get('/api/app/access-url');
+      if (!res.data?.url) return;
+      const qrRes = await api.get('/api/app/access-qr', { responseType: 'blob' });
+      setAccessInfo({
+        url: res.data.url,
+        qrUrl: URL.createObjectURL(new Blob([qrRes.data], { type: 'image/png' })),
+      });
+    } catch {
+      // indisponible en mode dev (Vite) — la carte ne s'affiche pas
+    }
   };
 
   const handleChangePassword = async (e: FormEvent) => {
@@ -123,7 +213,7 @@ export default function SettingsPage() {
   const handleSaveST = async (e: FormEvent) => {
     e.preventDefault();
     try {
-      const durationHours = Math.round(Number(stDays) * 24);
+      const durationHours = stUnit === 'days' ? Math.round(Number(stDays) * 24) : Math.round(Number(stDays));
       if (editStId) {
         await api.put(`/api/tickets/subscription-types/${editStId}`, {
           name: stName,
@@ -137,7 +227,7 @@ export default function SettingsPage() {
           price: Number(stPrice),
         });
       }
-      addToast(editStId ? 'Type modifié' : 'Type ajouté', 'success');
+      addToast(editStId ? 'Type d\'abonnement modifié' : 'Type d\'abonnement ajouté', 'success');
       setShowST(false); setStName(''); setStDays(''); setStPrice(''); setEditStId(null);
       loadData();
     } catch (err: any) {
@@ -217,11 +307,44 @@ export default function SettingsPage() {
             </div>
             <div className="form-group">
               <label className="form-label">Nouveau mot de passe</label>
-              <input type="password" className="form-input" required minLength={4} value={newPwd} onChange={(e) => setNewPwd(e.target.value)} />
+              <input type="password" className="form-input" required minLength={8} value={newPwd} onChange={(e) => setNewPwd(e.target.value)} />
             </div>
             <button type="submit" className="btn btn-primary">Modifier</button>
           </form>
         </div>
+
+        {/* Accès smartphone (mode installé : le backend sert l'app) */}
+        {accessInfo && (
+          <div className="card">
+            <h3 style={{ fontWeight: 700, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <QrCode size={18} /> Accès smartphone
+            </h3>
+            <p className="text-muted text-sm" style={{ marginBottom: '14px' }}>
+              Scannez ce QR avec un téléphone connecté au <strong>même réseau Wi-Fi</strong> pour ouvrir l'application.
+            </p>
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <img
+                src={accessInfo.qrUrl}
+                alt="QR d'accès smartphone"
+                style={{ width: 140, height: 140, borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)', flexShrink: 0 }}
+              />
+              <div>
+                <div style={{ fontFamily: 'monospace', fontSize: '0.9rem', color: 'var(--primary-300)', marginBottom: '8px' }}>
+                  {accessInfo.url}
+                </div>
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => {
+                    navigator.clipboard?.writeText(accessInfo.url);
+                    addToast('Lien copié', 'success');
+                  }}
+                >
+                  <Copy size={14} /> Copier le lien
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Payment Methods (admin) */}
         {isAdmin && (
@@ -275,7 +398,7 @@ export default function SettingsPage() {
             {/* Wave QR preview */}
             {paymentMethods.filter(pm => pm.wave_qr_image_path).map(pm => (
               <div key={pm.id} className="wave-qr-container" style={{ marginTop: '16px' }}>
-                <img src={`${API_BASE_URL}/${pm.wave_qr_image_path}`} alt="QR Code Wave" />
+                <SecureImage srcPath={pm.wave_qr_image_path} alt="QR Code Wave" />
                 {pm.wave_merchant_number && (
                   <>
                     <div className="wave-merchant-label">Numéro Marchand Wave</div>
@@ -314,7 +437,17 @@ export default function SettingsPage() {
                   </div>
                   <div className="flex gap-2">
                     <button className="btn btn-ghost btn-sm" onClick={() => {
-                      setEditStId(st.id); setStName(st.name); setStDays(String(st.duration_hours / 24)); setStPrice(String(st.price)); setShowST(true);
+                      setEditStId(st.id);
+                      setStName(st.name);
+                      if (st.duration_hours % 24 === 0) {
+                        setStUnit('days');
+                        setStDays(String(st.duration_hours / 24));
+                      } else {
+                        setStUnit('hours');
+                        setStDays(String(st.duration_hours));
+                      }
+                      setStPrice(String(st.price));
+                      setShowST(true);
                     }}>
                       <Edit size={14} />
                     </button>
@@ -372,6 +505,117 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+
+        {/* Database Backup (admin) */}
+        {isAdmin && (
+          <div className="card">
+            <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+              <h3 style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Database size={18} /> Sauvegardes Automatiques
+              </h3>
+              <div className="flex gap-2">
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={loadBackups}
+                  disabled={backupLoading}
+                  title="Actualiser la liste"
+                >
+                  <RefreshCw size={14} className={backupLoading ? 'spin' : ''} />
+                </button>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={handleTriggerBackup}
+                  disabled={triggeringBackup}
+                >
+                  {triggeringBackup ? (
+                    <><RefreshCw size={14} className="spin" /> Sauvegarde...</>
+                  ) : (
+                    <><Database size={14} /> Déclencher une sauvegarde</>  
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <p className="text-muted text-sm" style={{ marginBottom: '16px', lineHeight: '1.5' }}>
+              Les sauvegardes JSON complètes sont déclenchées <strong>automatiquement</strong> après chaque
+              importation de lot et chaque vente. Elles sont stockées dans le dossier <code style={{ background: 'var(--bg-input)', padding: '1px 6px', borderRadius: '4px', fontSize: '0.78rem' }}>backups/</code> du projet.
+            </p>
+
+            {/* Backup list */}
+            {backupFiles.length === 0 && !backupLoading && (
+              <div style={{
+                textAlign: 'center', padding: '28px 16px',
+                color: 'var(--text-muted)', fontSize: '0.85rem',
+                background: 'var(--bg-input)', borderRadius: 'var(--radius-md)',
+                border: '1px dashed var(--border-default)'
+              }}>
+                <Database size={28} style={{ margin: '0 auto 10px', opacity: 0.3, display: 'block' }} />
+                Aucun fichier de sauvegarde trouvé.<br />
+                <span style={{ fontSize: '0.78rem' }}>Cliquez sur « Actualiser » ou déclenchez une sauvegarde manuelle.</span>
+              </div>
+            )}
+
+            {backupLoading && (
+              <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
+                <RefreshCw size={20} className="spin" style={{ margin: '0 auto', display: 'block' }} />
+              </div>
+            )}
+
+            {backupFiles.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px', overflowY: 'auto' }}>
+                {backupFiles.map((f) => {
+                  const dateStr = f.created_at
+                    ? new Date(f.created_at * 1000).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                    : '—';
+                  const triggerLabel: Record<string, string> = {
+                    vente: '🛒 Vente',
+                    import_lot: '📦 Import lot',
+                    manuel: '🖐 Manuel',
+                    manual_download: '📥 Téléchargement',
+                    auto: '⚙️ Auto',
+                  };
+                  const trigger = f.trigger || 'auto';
+                  return (
+                    <div key={f.filename} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '10px 14px', background: 'var(--bg-input)', borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-default)', gap: '12px', flexWrap: 'wrap'
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {f.filename}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', gap: '10px' }}>
+                          <span>{dateStr}</span>
+                          <span>{f.size_kb} KB</span>
+                          <span style={{ color: 'var(--primary-300)' }}>{triggerLabel[trigger] || trigger}</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => handleDownloadBackup(f.filename)}
+                          title="Télécharger ce fichier"
+                          style={{ color: 'var(--primary-300)' }}
+                        >
+                          <Download size={14} />
+                        </button>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => handleDeleteBackup(f.filename)}
+                          title="Supprimer ce fichier"
+                          style={{ color: 'var(--danger)' }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Payment Method Modal */}
@@ -410,12 +654,21 @@ export default function SettingsPage() {
             </div>
             <form onSubmit={handleSaveST}>
               <div className="form-group">
-                <label className="form-label">Nom *</label>
-                <input className="form-input" required value={stName} onChange={(e) => setStName(e.target.value)} placeholder="ex: 1 Heure, 24 Heures..." />
+                <label className="form-label">Nom du forfait *</label>
+                <input className="form-input" required value={stName} onChange={(e) => setStName(e.target.value)} placeholder="ex: 1 Heure, 24 Heures, 7 Jours..." />
               </div>
-              <div className="form-group">
-                <label className="form-label">Durée (jours) *</label>
-                <input type="number" step="any" className="form-input" required min={0.01} value={stDays} onChange={(e) => setStDays(e.target.value)} placeholder="ex: 1, 7, 30..." />
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
+                <div className="form-group">
+                  <label className="form-label">Durée *</label>
+                  <input type="number" step="any" className="form-input" required min={1} value={stDays} onChange={(e) => setStDays(e.target.value)} placeholder="ex: 1, 3, 24..." />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Unité</label>
+                  <select className="form-select" value={stUnit} onChange={(e) => setStUnit(e.target.value as 'hours' | 'days')}>
+                    <option value="hours">Heure(s)</option>
+                    <option value="days">Jour(s)</option>
+                  </select>
+                </div>
               </div>
               <div className="form-group">
                 <label className="form-label">Prix (FCFA) *</label>
@@ -428,6 +681,11 @@ export default function SettingsPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* === Automation Panel (admin) === */}
+      {isAdmin && (
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: -1, display: 'none' }} />
       )}
     </div>
   );

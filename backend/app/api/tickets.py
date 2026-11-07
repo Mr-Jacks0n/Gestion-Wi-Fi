@@ -11,12 +11,13 @@ from app.models.ticket import Ticket, TicketStatus
 from app.models.batch import Batch
 from app.models.subscription_type import SubscriptionType
 from app.schemas.ticket import (
-    BatchCreate, BatchResponse, TicketResponse, TicketAssign,
+    BatchCreate, BatchUpdate, BatchResponse, TicketResponse, TicketAssign,
     TicketBulkAssign, SubscriptionTypeCreate, SubscriptionTypeUpdate, SubscriptionTypeResponse,
 )
 from app.services.ticket_service import (
     create_batch_with_tickets, assign_tickets_to_vendor, bulk_assign_tickets,
 )
+from app.services.backup_service import trigger_background_backup
 
 router = APIRouter(prefix="/api/tickets", tags=["Tickets"])
 
@@ -190,12 +191,71 @@ def create_batch(
         details={"reference": batch.reference, "total_tickets": batch.total_tickets},
     )
 
+    # Trigger automated backup
+    trigger_background_backup(trigger="import_lot")
+
     return {
         "batch": BatchResponse.model_validate(batch),
         "imported": batch.total_tickets,
         "duplicates": duplicates,
         "duplicate_count": len(duplicates),
     }
+
+
+@router.put("/batches/{batch_id}", response_model=BatchResponse)
+def update_batch(
+    batch_id: int,
+    data: BatchUpdate,
+    admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Update a batch reference, subscription type / duration, or notes (admin only)."""
+    batch = db.query(Batch).filter(Batch.id == batch_id).first()
+    if not batch:
+        raise HTTPException(status_code=404, detail="Lot introuvable")
+
+    changes = {}
+
+    if data.reference is not None and data.reference.strip() != batch.reference:
+        existing = db.query(Batch).filter(Batch.reference == data.reference.strip(), Batch.id != batch_id).first()
+        if existing:
+            raise HTTPException(status_code=400, detail=f"La référence de lot '{data.reference}' existe déjà")
+        changes["reference"] = {"old": batch.reference, "new": data.reference.strip()}
+        batch.reference = data.reference.strip()
+
+    if data.notes is not None:
+        batch.notes = data.notes
+
+    if data.subscription_type_id is not None and data.subscription_type_id != batch.subscription_type_id:
+        sub_type = db.query(SubscriptionType).filter(SubscriptionType.id == data.subscription_type_id).first()
+        if not sub_type:
+            raise HTTPException(status_code=404, detail="Type d'abonnement introuvable")
+        changes["subscription_type_id"] = {"old": batch.subscription_type_id, "new": data.subscription_type_id}
+        batch.subscription_type_id = data.subscription_type_id
+
+        # Update all unsold tickets in this batch to the new subscription_type_id
+        db.query(Ticket).filter(
+            Ticket.batch_id == batch_id,
+            Ticket.status != TicketStatus.SOLD
+        ).update({"subscription_type_id": data.subscription_type_id}, synchronize_session=False)
+
+    db.commit()
+    db.refresh(batch)
+
+    from app.utils.audit import log_action
+    log_action(
+        db=db,
+        user_id=admin.id,
+        action="batch.update",
+        entity_type="batch",
+        entity_id=batch.id,
+        details={"reference": batch.reference, "changes": changes},
+    )
+
+    res = BatchResponse.model_validate(batch)
+    res.subscription_type = SubscriptionTypeResponse.model_validate(batch.subscription_type)
+    res.admin_name = batch.admin.full_name
+    return res
 
 
 @router.delete("/batches/{batch_id}", status_code=204)
@@ -266,7 +326,8 @@ def list_tickets(
     if batch_id:
         query = query.filter(Ticket.batch_id == batch_id)
     if code:
-        query = query.filter(Ticket.code.ilike(f"%{code}%"))
+        safe_code = code.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        query = query.filter(Ticket.code.ilike(f"%{safe_code}%"))
 
     tickets = query.order_by(Ticket.id.desc()).offset((page - 1) * per_page).limit(per_page).all()
 
@@ -287,8 +348,20 @@ def search_ticket(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Search for a specific ticket by code."""
-    ticket = db.query(Ticket).filter(Ticket.code == code).first()
+    """Search for a specific ticket by code.
+
+    Un vendeur ne peut consulter que les tickets qui lui sont attribués ;
+    admin/technicien ont accès au stock central.
+    """
+    # Échappe les jokers ILIKE fournis par l'utilisateur (pas de search full-scan)
+    safe_code = code.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    query = db.query(Ticket).filter(Ticket.code.ilike(safe_code))
+
+    # Cloisonnement vendeur (comme /api/tickets/)
+    if current_user.role == UserRole.VENDOR:
+        query = query.filter(Ticket.assigned_to == current_user.id)
+
+    ticket = query.first()
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket introuvable")
 

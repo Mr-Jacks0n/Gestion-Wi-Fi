@@ -13,7 +13,12 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    password: str = Field(..., min_length=4, max_length=100)
+    password: str = Field(
+        ...,
+        min_length=8,
+        max_length=100,
+        description="8 caractères minimum (NIST SP 800-63B : longueur avant complexité)",
+    )
 
 
 class UserUpdate(BaseModel):
@@ -25,12 +30,12 @@ class UserUpdate(BaseModel):
 
 class UserPasswordChange(BaseModel):
     current_password: str
-    new_password: str = Field(..., min_length=4, max_length=100)
+    new_password: str = Field(..., min_length=8, max_length=100)
 
 
 class AdminPasswordChange(BaseModel):
     """Admin can change any user's password without knowing the current one."""
-    new_password: str = Field(..., min_length=4, max_length=100)
+    new_password: str = Field(..., min_length=8, max_length=100)
 
 
 class UserResponse(BaseModel):
@@ -43,6 +48,16 @@ class UserResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class UserProfileResponse(BaseModel):
+    id: int
+    username: str
+    full_name: str
+    role: str
+    is_active: bool
 
     model_config = {"from_attributes": True}
 

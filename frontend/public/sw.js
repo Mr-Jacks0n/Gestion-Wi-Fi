@@ -32,6 +32,11 @@ self.addEventListener("activate", (e) => {
 // Stratégie network-first : toujours chercher le réseau d'abord,
 // utiliser le cache uniquement en mode hors-ligne
 self.addEventListener("fetch", (e) => {
+  // Ne pas intercepter les requêtes API ni les requêtes externes
+  if (e.request.url.includes("/api/") || !e.request.url.startsWith(self.location.origin)) {
+    return;
+  }
+
   e.respondWith(
     fetch(e.request)
       .then((response) => {
@@ -48,3 +53,4 @@ self.addEventListener("fetch", (e) => {
       })
   );
 });
+

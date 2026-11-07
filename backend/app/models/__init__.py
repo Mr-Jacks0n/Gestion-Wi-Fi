@@ -8,6 +8,10 @@ from app.models.sale import Sale
 from app.models.resupply import ResupplyRequest
 from app.models.payment_method import PaymentMethod
 from app.models.audit_log import AuditLog
+from app.models.expense import Expense
+from app.models.notification import Notification
+from app.models.automation_setting import AutomationSetting
+from app.models.register_closure import RegisterClosure
 
 __all__ = [
     "User",
@@ -18,4 +22,8 @@ __all__ = [
     "ResupplyRequest",
     "PaymentMethod",
     "AuditLog",
+    "Expense",
+    "Notification",
+    "AutomationSetting",
+    "RegisterClosure",
 ]

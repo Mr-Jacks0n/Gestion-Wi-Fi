@@ -8,7 +8,7 @@ export interface User {
   full_name: string;
   phone: string;
   email: string | null;
-  role: 'admin' | 'vendor';
+  role: 'admin' | 'vendor' | 'technician';
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -41,6 +41,12 @@ export interface Batch {
   admin_name?: string;
 }
 
+export interface BatchUpdate {
+  reference?: string;
+  subscription_type_id?: number;
+  notes?: string | null;
+}
+
 export interface Ticket {
   id: number;
   code: string;
@@ -57,7 +63,7 @@ export interface Ticket {
 
 export interface Sale {
   id: number;
-  ticket_id: number;
+  ticket_id: number | null;
   vendor_id: number;
   client_name: string | null;
   client_phone: string | null;
@@ -72,8 +78,10 @@ export interface Sale {
   vendor_name?: string;
   subscription_type_name?: string;
   subscription_duration_hours?: number;
+  batch_reference?: string;
   is_paid: boolean;
   paid_at: string | null;
+  ticket_status?: string;
 }
 
 export interface ResupplyRequest {
@@ -103,12 +111,20 @@ export interface DashboardStats {
   vendor_stock: number;
   today_sales: number;
   today_revenue: number;
+  total_revenue: number;
   cash_payments: number;
   wave_payments: number;
+  total_cash_payments: number;
+  total_wave_payments: number;
   pending_requests: number;
   total_vendors: number;
   total_tickets: number;
   total_sold: number;
+  cash_balance: number;
+  wave_balance: number;
+  global_balance: number;
+  total_defective: number;
+  total_compensation: number;
   top_client_name?: string | null;
   top_client_tickets?: number;
   top_vendor_name?: string | null;
@@ -117,6 +133,12 @@ export interface DashboardStats {
   top_subscription_type_tickets?: number;
   top_day_name?: string | null;
   top_day_tickets?: number;
+  vendor_performance?: {
+    vendor_id: number;
+    vendor_name: string;
+    sales_count: number;
+    revenue: number;
+  }[] | null;
 }
 
 export interface LoginResponse {
@@ -130,4 +152,16 @@ export interface StockSummaryItem {
   available: number;
   assigned: number;
   sold: number;
+}
+
+export interface AuditLog {
+  id: number;
+  user_id: number;
+  user_name: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: number | null;
+  details: Record<string, any> | null;
+  ip_address: string | null;
+  created_at: string;
 }

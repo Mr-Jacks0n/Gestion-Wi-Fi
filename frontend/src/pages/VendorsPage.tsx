@@ -9,7 +9,8 @@ import { useAuthStore } from '../store/authStore';
 import type { UserWithStats } from '../types';
 
 export default function VendorsPage() {
-  const { addToast } = useAuthStore();
+  const { user, addToast } = useAuthStore();
+  const isAdmin = user?.role === 'admin';
   const [vendors, setVendors] = useState<UserWithStats[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -74,10 +75,10 @@ export default function VendorsPage() {
   };
 
   const deleteVendor = async (v: UserWithStats) => {
-    if (!confirm(`Supprimer (désactiver) ${v.full_name} ?`)) return;
+    if (!confirm(`Supprimer définitivement le compte de ${v.full_name} ? Ses tickets en cours seront transférés à l'administrateur.`)) return;
     try {
       await api.delete(`/api/users/${v.id}`);
-      addToast('Vendeur supprimé', 'success');
+      addToast('Vendeur supprimé définitivement et tickets transférés', 'success');
       loadVendors();
     } catch (err: any) {
       addToast(err.response?.data?.detail || 'Erreur', 'error');
@@ -104,9 +105,11 @@ export default function VendorsPage() {
           <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>Vendeurs</h2>
           <p className="text-muted text-sm">Gérer les comptes vendeurs</p>
         </div>
-        <button className="btn btn-primary" onClick={() => { setEditId(null); setFormData({ username: '', full_name: '', phone: '', email: '', password: '', role: 'vendor' }); setShowForm(true); }}>
-          <Plus size={16} /> Nouveau vendeur
-        </button>
+        {isAdmin && (
+          <button className="btn btn-primary" onClick={() => { setEditId(null); setFormData({ username: '', full_name: '', phone: '', email: '', password: '', role: 'vendor' }); setShowForm(true); }}>
+            <Plus size={16} /> Nouveau vendeur
+          </button>
+        )}
       </div>
 
       <div className="data-table-container">
@@ -121,7 +124,7 @@ export default function VendorsPage() {
               <th>Ventes</th>
               <th>CA</th>
               <th>Stock</th>
-              <th>Actions</th>
+              {isAdmin && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -130,23 +133,29 @@ export default function VendorsPage() {
                 <td style={{ fontWeight: 600 }}>{v.full_name}</td>
                 <td>{v.username}</td>
                 <td>{v.phone}</td>
-                <td><span className={`badge ${v.role === 'admin' ? 'badge-assigned' : 'badge-sold'}`}>{v.role === 'admin' ? 'Admin' : 'Vendeur'}</span></td>
+                <td>
+                  <span className={`badge ${v.role === 'admin' ? 'badge-assigned' : v.role === 'technician' ? 'badge-pending' : 'badge-sold'}`}>
+                    {v.role === 'admin' ? 'Admin' : v.role === 'technician' ? 'Technicien' : 'Vendeur'}
+                  </span>
+                </td>
                 <td><span className={`badge ${v.is_active ? 'badge-active' : 'badge-inactive'}`}>{v.is_active ? 'Actif' : 'Inactif'}</span></td>
                 <td>{v.total_sales}</td>
                 <td>{formatCFA(v.total_revenue)}</td>
                 <td>{v.stock_count}</td>
-                <td>
-                  <div className="flex gap-2">
-                    <button className="btn btn-ghost btn-sm" onClick={() => openEdit(v)} title="Modifier"><Edit size={14} /></button>
-                    <button className="btn btn-ghost btn-sm" onClick={() => { setShowPwdModal(v.id); setNewPassword(''); }} title="Mot de passe"><Lock size={14} /></button>
-                    <button className="btn btn-ghost btn-sm" onClick={() => toggleActive(v)} title={v.is_active ? 'Désactiver' : 'Activer'}>
-                      {v.is_active ? <UserX size={14} /> : <UserCheck size={14} />}
-                    </button>
-                    {v.role !== 'admin' && (
-                      <button className="btn btn-ghost btn-sm" onClick={() => deleteVendor(v)} title="Supprimer" style={{ color: 'var(--danger)' }}><Trash2 size={14} /></button>
-                    )}
-                  </div>
-                </td>
+                {isAdmin && (
+                  <td>
+                    <div className="flex gap-2">
+                      <button className="btn btn-ghost btn-sm" onClick={() => openEdit(v)} title="Modifier"><Edit size={14} /></button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => { setShowPwdModal(v.id); setNewPassword(''); }} title="Mot de passe"><Lock size={14} /></button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => toggleActive(v)} title={v.is_active ? 'Désactiver' : 'Activer'}>
+                        {v.is_active ? <UserX size={14} /> : <UserCheck size={14} />}
+                      </button>
+                      {v.role !== 'admin' && (
+                        <button className="btn btn-ghost btn-sm" onClick={() => deleteVendor(v)} title="Supprimer" style={{ color: 'var(--danger)' }}><Trash2 size={14} /></button>
+                      )}
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -197,6 +206,7 @@ export default function VendorsPage() {
                     <label className="form-label">Rôle</label>
                     <select className="form-select" value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })}>
                       <option value="vendor">Vendeur</option>
+                      <option value="technician">Technicien</option>
                       <option value="admin">Administrateur</option>
                     </select>
                   </div>
@@ -222,7 +232,7 @@ export default function VendorsPage() {
             <form onSubmit={changePassword}>
               <div className="form-group">
                 <label className="form-label">Nouveau mot de passe *</label>
-                <input className="form-input" type="password" required minLength={4} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+                <input className="form-input" type="password" required minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-ghost" onClick={() => setShowPwdModal(null)}>Annuler</button>

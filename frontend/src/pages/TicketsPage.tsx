@@ -3,7 +3,7 @@
    ============================================================ */
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { Package, Search, Plus, Upload, X, Trash2 } from 'lucide-react';
+import { Package, Search, Plus, Upload, X, Trash2, Edit } from 'lucide-react';
 import api from '../lib/api';
 import { useAuthStore } from '../store/authStore';
 import type { Ticket, Batch, SubscriptionType, UserWithStats } from '../types';
@@ -29,6 +29,13 @@ export default function TicketsPage() {
   const [importCodes, setImportCodes] = useState('');
   const [importNotes, setImportNotes] = useState('');
   const [importing, setImporting] = useState(false);
+
+  // Edit batch modal
+  const [showEditBatch, setShowEditBatch] = useState<Batch | null>(null);
+  const [editBatchRef, setEditBatchRef] = useState('');
+  const [editBatchTypeId, setEditBatchTypeId] = useState('');
+  const [editBatchNotes, setEditBatchNotes] = useState('');
+  const [updatingBatch, setUpdatingBatch] = useState(false);
 
   // Assign modal
   const [showAssign, setShowAssign] = useState(false);
@@ -117,6 +124,26 @@ export default function TicketsPage() {
     }
   };
 
+  const handleUpdateBatch = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!showEditBatch) return;
+    setUpdatingBatch(true);
+    try {
+      await api.put(`/api/tickets/batches/${showEditBatch.id}`, {
+        reference: editBatchRef,
+        subscription_type_id: Number(editBatchTypeId),
+        notes: editBatchNotes || null,
+      });
+      addToast('Lot de tickets et durée mis à jour avec succès !', 'success');
+      setShowEditBatch(null);
+      loadData();
+    } catch (err: any) {
+      addToast(err.response?.data?.detail || 'Erreur lors de la modification du lot', 'error');
+    } finally {
+      setUpdatingBatch(false);
+    }
+  };
+
   const deleteBatch = async (id: number) => {
     if (!confirm('Supprimer ce lot de tickets ? Cela supprimera TOUS les tickets non vendus associés.')) return;
     try {
@@ -136,6 +163,16 @@ export default function TicketsPage() {
       loadData();
     } catch (err: any) {
       addToast(err.response?.data?.detail || 'Erreur lors de la suppression', 'error');
+    }
+  };
+
+  const handleUpdateStatus = async (id: number, newStatus: string) => {
+    try {
+      await api.put(`/api/tickets/${id}/status`, { status: newStatus });
+      addToast('Statut du ticket mis à jour avec succès', 'success');
+      loadData();
+    } catch (err: any) {
+      addToast(err.response?.data?.detail || 'Erreur lors de la mise à jour', 'error');
     }
   };
 
@@ -224,6 +261,19 @@ export default function TicketsPage() {
                   <td style={{ textAlign: 'right' }}>
                     <button
                       className="btn btn-ghost btn-sm"
+                      style={{ color: 'var(--primary-300)', padding: '4px', marginRight: '6px' }}
+                      onClick={() => {
+                        setShowEditBatch(b);
+                        setEditBatchRef(b.reference);
+                        setEditBatchTypeId(String(b.subscription_type_id));
+                        setEditBatchNotes(b.notes || '');
+                      }}
+                      title="Modifier la durée et le lot"
+                    >
+                      <Edit size={14} />
+                    </button>
+                    <button
+                      className="btn btn-ghost btn-sm"
                       style={{ color: 'var(--danger)', padding: '4px' }}
                       onClick={() => deleteBatch(b.id)}
                       title="Supprimer le lot"
@@ -263,9 +313,23 @@ export default function TicketsPage() {
                   <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>{t.code}</td>
                   <td>{t.subscription_type?.name}</td>
                   <td>
-                    <span className={`badge badge-${t.status}`}>
-                      {statusLabels[t.status] || t.status}
-                    </span>
+                    {isAdmin ? (
+                      <select
+                        className="form-select text-xs"
+                        style={{ padding: '2px 8px', height: 'auto', width: 'auto', fontSize: '0.75rem', fontWeight: 600 }}
+                        value={t.status}
+                        onChange={(e) => handleUpdateStatus(t.id, e.target.value)}
+                      >
+                        <option value="available">Disponible</option>
+                        <option value="assigned">Attribué</option>
+                        <option value="sold">Vendu</option>
+                        <option value="defective">Défectueux</option>
+                      </select>
+                    ) : (
+                      <span className={`badge badge-${t.status}`}>
+                        {statusLabels[t.status] || t.status}
+                      </span>
+                    )}
                   </td>
                   <td>{t.batch_reference}</td>
                   {isAdmin && <td>{t.assigned_user_name || '—'}</td>}
@@ -356,6 +420,69 @@ export default function TicketsPage() {
               </div>
 
               <div className="form-group">
+                <label className="form-label">Importer depuis un fichier (Optionnel)</label>
+                <div
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        const text = event.target?.result as string;
+                        if (text) {
+                          const parsed = text.split(/[\n,;\r]+/).map(c => c.trim()).filter(Boolean).join('\n');
+                          setImportCodes(parsed);
+                          addToast(`Fichier "${file.name}" chargé avec succès !`, 'success');
+                        }
+                      };
+                      reader.readAsText(file);
+                    }
+                  }}
+                  style={{
+                    border: '2px dashed rgba(16, 185, 129, 0.3)',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    textAlign: 'center',
+                    background: 'rgba(16, 185, 129, 0.02)',
+                    cursor: 'pointer',
+                    color: '#92b5a5',
+                    fontSize: '0.85rem',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#10b981')}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.3)')}
+                  onClick={() => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = '.txt,.csv';
+                    input.onchange = (e: any) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          const text = event.target?.result as string;
+                          if (text) {
+                            const parsed = text.split(/[\n,;\r]+/).map(c => c.trim()).filter(Boolean).join('\n');
+                            setImportCodes(parsed);
+                            addToast(`Fichier "${file.name}" chargé avec succès !`, 'success');
+                          }
+                        };
+                        reader.readAsText(file);
+                      }
+                    };
+                    input.click();
+                  }}
+                >
+                  <Upload size={16} /> Glissez-déposez un fichier .txt ou .csv, ou cliquez ici
+                </div>
+              </div>
+
+              <div className="form-group">
                 <label className="form-label">Codes Wi-Fi (un par ligne)</label>
                 <textarea
                   className="form-textarea"
@@ -427,6 +554,64 @@ export default function TicketsPage() {
               <div className="modal-footer">
                 <button type="button" className="btn btn-ghost" onClick={() => setShowAssign(false)}>Annuler</button>
                 <button type="submit" className="btn btn-accent">Attribuer</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Edit Batch Modal */}
+      {showEditBatch && (
+        <div className="modal-overlay" onClick={() => setShowEditBatch(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '460px' }}>
+            <div className="modal-header">
+              <h3>Modifier le lot #{showEditBatch.reference}</h3>
+              <button className="btn btn-ghost btn-icon" onClick={() => setShowEditBatch(null)}><X size={18} /></button>
+            </div>
+            <form onSubmit={handleUpdateBatch}>
+              <div className="form-group">
+                <label className="form-label">Référence du lot *</label>
+                <input
+                  className="form-input"
+                  required
+                  value={editBatchRef}
+                  onChange={(e) => setEditBatchRef(e.target.value)}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Type d'abonnement / Durée du forfait *</label>
+                <select
+                  className="form-select"
+                  required
+                  value={editBatchTypeId}
+                  onChange={(e) => setEditBatchTypeId(e.target.value)}
+                >
+                  {subTypes.map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.duration_hours % 24 === 0 ? `${t.duration_hours / 24} jour(s)` : `${t.duration_hours}h`}) — {new Intl.NumberFormat('fr-FR').format(t.price)} FCFA
+                    </option>
+                  ))}
+                </select>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                  ℹ️ La modification du forfait et de la durée s'appliquera à tous les tickets non vendus de ce lot.
+                </span>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Notes (Optionnel)</label>
+                <textarea
+                  className="form-textarea"
+                  value={editBatchNotes}
+                  onChange={(e) => setEditBatchNotes(e.target.value)}
+                  rows={3}
+                />
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="btn btn-ghost" onClick={() => setShowEditBatch(null)}>Annuler</button>
+                <button type="submit" className="btn btn-primary" disabled={updatingBatch}>
+                  {updatingBatch ? 'Enregistrement...' : 'Enregistrer les modifications'}
+                </button>
               </div>
             </form>
           </div>

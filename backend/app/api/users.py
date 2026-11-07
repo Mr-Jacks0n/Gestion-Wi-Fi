@@ -5,11 +5,18 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.database import get_db
-from app.core.dependencies import get_current_user, get_current_admin
+from app.core.dependencies import get_current_user, get_current_admin, get_current_admin_strict
 from app.core.security import hash_password
 from app.models.user import User, UserRole
 from app.models.sale import Sale
 from app.models.ticket import Ticket, TicketStatus
+from app.models.resupply import ResupplyRequest
+from app.models.notification import Notification
+from app.models.expense import Expense
+from app.models.batch import Batch
+from app.models.audit_log import AuditLog
+from app.utils.audit import log_action
+
 from app.schemas.user import (
     UserCreate, UserUpdate, UserResponse, UserWithStats, AdminPasswordChange,
 )
@@ -21,7 +28,7 @@ router = APIRouter(prefix="/api/users", tags=["Users"])
 def list_users(
     role: str | None = None,
     is_active: bool | None = None,
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(get_current_admin_strict),
     db: Session = Depends(get_db),
 ):
     """List all users with optional filters (admin only)."""
@@ -57,7 +64,7 @@ def list_users(
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(
     data: UserCreate,
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(get_current_admin_strict),
     db: Session = Depends(get_db),
 ):
     """Create a new user (admin only)."""
@@ -84,7 +91,7 @@ def create_user(
 @router.get("/{user_id}", response_model=UserWithStats)
 def get_user(
     user_id: int,
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(get_current_admin_strict),
     db: Session = Depends(get_db),
 ):
     """Get a specific user with stats (admin only)."""
@@ -113,7 +120,7 @@ def get_user(
 def update_user(
     user_id: int,
     data: UserUpdate,
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(get_current_admin_strict),
     db: Session = Depends(get_db),
 ):
     """Update a user (admin only)."""
@@ -141,26 +148,81 @@ def update_user(
 @router.delete("/{user_id}")
 def delete_user(
     user_id: int,
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(get_current_admin_strict),
     db: Session = Depends(get_db),
 ):
-    """Delete (deactivate) a user (admin only)."""
+    """Delete a user completely and transfer their tickets and other data to the administrator (admin only)."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Utilisateur introuvable")
     if user.id == admin.id:
         raise HTTPException(status_code=400, detail="Vous ne pouvez pas supprimer votre propre compte")
 
-    user.is_active = False
+    username = user.username
+
+    # 1. Reassign tickets assigned to this user to the admin
+    db.query(Ticket).filter(Ticket.assigned_to == user.id).update(
+        {Ticket.assigned_to: admin.id}, synchronize_session=False
+    )
+
+    # 2. Reassign sales (both vendor and canceller) to the admin
+    db.query(Sale).filter(Sale.vendor_id == user.id).update(
+        {Sale.vendor_id: admin.id}, synchronize_session=False
+    )
+    db.query(Sale).filter(Sale.cancelled_by == user.id).update(
+        {Sale.cancelled_by: admin.id}, synchronize_session=False
+    )
+
+    # 3. Reassign resupply requests (vendor and processor) to the admin
+    db.query(ResupplyRequest).filter(ResupplyRequest.vendor_id == user.id).update(
+        {ResupplyRequest.vendor_id: admin.id}, synchronize_session=False
+    )
+    db.query(ResupplyRequest).filter(ResupplyRequest.processed_by == user.id).update(
+        {ResupplyRequest.processed_by: admin.id}, synchronize_session=False
+    )
+
+    # 4. Reassign expenses created by the user to the admin
+    db.query(Expense).filter(Expense.created_by_id == user.id).update(
+        {Expense.created_by_id: admin.id}, synchronize_session=False
+    )
+
+    # 5. Reassign batches created by the user to the admin
+    db.query(Batch).filter(Batch.admin_id == user.id).update(
+        {Batch.admin_id: admin.id}, synchronize_session=False
+    )
+
+    # 6. Reassign audit logs created by the user to the admin
+    db.query(AuditLog).filter(AuditLog.user_id == user.id).update(
+        {AuditLog.user_id: admin.id}, synchronize_session=False
+    )
+
+    # 7. Delete notifications associated with the user
+    db.query(Notification).filter(Notification.user_id == user.id).delete(
+        synchronize_session=False
+    )
+
+    # 8. Delete the user completely
+    db.delete(user)
     db.commit()
-    return {"message": f"Utilisateur {user.username} désactivé"}
+
+    # 9. Audit the deletion action
+    log_action(
+        db=db,
+        user_id=admin.id,
+        action="user.delete_complete",
+        entity_type="user",
+        entity_id=user_id,
+        details={"username": username, "transferred_to_admin_id": admin.id},
+    )
+
+    return {"message": f"Utilisateur {username} supprimé définitivement et ses données transférées à l'administrateur"}
 
 
 @router.post("/{user_id}/change-password")
 def admin_change_password(
     user_id: int,
     data: AdminPasswordChange,
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(get_current_admin_strict),
     db: Session = Depends(get_db),
 ):
     """Admin changes any user's password."""
@@ -170,4 +232,14 @@ def admin_change_password(
 
     user.password_hash = hash_password(data.new_password)
     db.commit()
+
+    # Traçabilité : action sensible (réinitialisation)
+    log_action(
+        db=db,
+        user_id=admin.id,
+        action="user.admin_change_password",
+        entity_type="user",
+        entity_id=user.id,
+        details={"username": user.username, "changed_by": admin.username},
+    )
     return {"message": f"Mot de passe de {user.username} modifié avec succès"}

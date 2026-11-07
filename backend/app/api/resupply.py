@@ -1,20 +1,25 @@
 """Resupply API — vendor stock requests and admin processing."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.core.dependencies import get_current_user, get_current_admin
+from app.core.rate_limiting import limiter, RATE_LIMITS
 from app.models.user import User, UserRole
 from app.models.resupply import ResupplyRequest, ResupplyStatus
 from app.schemas.resupply import ResupplyRequestCreate, ResupplyProcessRequest, ResupplyRequestResponse
 from app.services.resupply_service import create_resupply_request, process_resupply_request
+from app.services.webhook_service import trigger_webhook
+from app.models.webhook import WebhookEventType
 
 router = APIRouter(prefix="/api/resupply", tags=["Resupply"])
 
 
 @router.post("/", response_model=ResupplyRequestResponse, status_code=201)
+@limiter.limit(RATE_LIMITS["general"])
 def request_resupply(
+    request: Request,
     data: ResupplyRequestCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -38,6 +43,19 @@ def request_resupply(
         entity_type="resupply_request",
         entity_id=req.id,
         details={"subscription_type": req.subscription_type.name, "quantity": req.quantity},
+    )
+
+    # Trigger webhook for resupply request
+    trigger_webhook(
+        WebhookEventType.RESUPPLY_REQUESTED,
+        {
+            "request_id": req.id,
+            "vendor_id": current_user.id,
+            "vendor_name": current_user.full_name,
+            "subscription_type": req.subscription_type.name,
+            "quantity": req.quantity,
+        },
+        user_id=current_user.id
     )
 
     response = ResupplyRequestResponse.model_validate(req)
@@ -73,10 +91,12 @@ def list_requests(
 
 
 @router.post("/{request_id}/process", response_model=ResupplyRequestResponse)
+@limiter.limit(RATE_LIMITS["general"])
 def process_request(
+    request: Request,
     request_id: int,
     data: ResupplyProcessRequest,
-    admin: User = Depends(get_current_admin),
+    current_user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
     """Approve or reject a resupply request (admin only)."""
@@ -85,7 +105,7 @@ def process_request(
             db=db,
             request_id=request_id,
             action=data.action,
-            processed_by=admin.id,
+            processed_by=current_user.id,
             rejection_reason=data.rejection_reason,
         )
     except ValueError as e:
@@ -94,11 +114,27 @@ def process_request(
     from app.utils.audit import log_action
     log_action(
         db=db,
-        user_id=admin.id,
+        user_id=current_user.id,
         action=f"resupply.{data.action}",
         entity_type="resupply_request",
         entity_id=req.id,
         details={"vendor_name": req.vendor.full_name, "subscription_type": req.subscription_type.name, "quantity": req.quantity, "reason": data.rejection_reason},
+    )
+
+    # Trigger webhook based on approval/rejection
+    event_type = WebhookEventType.RESUPPLY_APPROVED if data.action == "approve" else WebhookEventType.RESUPPLY_REQUESTED
+    trigger_webhook(
+        event_type,
+        {
+            "request_id": req.id,
+            "vendor_id": req.vendor_id,
+            "vendor_name": req.vendor.full_name,
+            "subscription_type": req.subscription_type.name,
+            "quantity": req.quantity,
+            "status": req.status.value,
+            "reason": data.rejection_reason,
+        },
+        user_id=current_user.id
     )
 
     response = ResupplyRequestResponse.model_validate(req)

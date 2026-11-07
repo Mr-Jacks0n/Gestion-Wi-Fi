@@ -8,12 +8,18 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )
 
-// Register PWA Service Worker
+// Unregister PWA Service Worker to prevent caching and download corruption issues
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('Service Worker registered', reg))
-      .catch(err => console.error('Service Worker registration failed', err));
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const registration of registrations) {
+      registration.unregister().then((success) => {
+        if (success) {
+          console.log('Service Worker unregistered successfully');
+        }
+      });
+    }
+  }).catch((err) => {
+    console.error('Error during Service Worker unregistration:', err);
   });
 }
 

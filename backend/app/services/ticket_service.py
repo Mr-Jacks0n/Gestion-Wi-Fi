@@ -109,6 +109,7 @@ def bulk_assign_tickets(
         .filter(
             Ticket.subscription_type_id == subscription_type_id,
             Ticket.status == TicketStatus.AVAILABLE,
+            ~Ticket.code.ilike("TEST%")
         )
         .order_by(Ticket.id)
         .limit(quantity)

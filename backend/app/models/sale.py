@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import String, ForeignKey, Numeric, Boolean, Text, DateTime, func
+from sqlalchemy import String, ForeignKey, Numeric, Boolean, Text, DateTime, Integer, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -12,7 +12,7 @@ class Sale(Base):
     __tablename__ = "sales"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    ticket_id: Mapped[int] = mapped_column(ForeignKey("tickets.id"), unique=True, nullable=False)
+    ticket_id: Mapped[int | None] = mapped_column(ForeignKey("tickets.id", ondelete="SET NULL"), nullable=True)
     vendor_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     client_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     client_phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -28,6 +28,12 @@ class Sale(Base):
     is_paid: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    # Permanent Historical Snapshots (Guarantees sales history is never lost or deleted)
+    ticket_code: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+    subscription_type_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    subscription_duration_hours: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    batch_reference: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
     # Relationships
     ticket = relationship("Ticket", back_populates="sale")
     vendor = relationship("User", back_populates="sales", foreign_keys=[vendor_id])
@@ -35,3 +41,4 @@ class Sale(Base):
 
     def __repr__(self) -> str:
         return f"<Sale #{self.id} - {self.payment_method}>"
+

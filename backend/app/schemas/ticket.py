@@ -37,6 +37,13 @@ class BatchCreate(BaseModel):
     notes: str | None = None
 
 
+class BatchUpdate(BaseModel):
+    reference: str | None = Field(None, min_length=1, max_length=50)
+    subscription_type_id: int | None = None
+    notes: str | None = None
+
+
+
 class BatchResponse(BaseModel):
     id: int
     reference: str
