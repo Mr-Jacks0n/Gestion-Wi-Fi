@@ -5,7 +5,7 @@
 **Plateforme de gestion et de vente de tickets Wi-Fi** pour Adven's Center —
 FastAPI · React TypeScript · PostgreSQL · Docker
 
-[![CI](https://img.shields.io/badge/CI-passing-31c48d)](.github/workflows/ci.yml)
+[![CI](https://github.com/bindedouworker-hub/Gestion-Wi-Fi/actions/workflows/ci.yml/badge.svg)](https://github.com/bindedouworker-hub/Gestion-Wi-Fi/actions/workflows/ci.yml)
 [![Licence](https://img.shields.io/badge/licence-Propriétaire-e5484d)](LICENSE)
 ![Python 3.12](https://img.shields.io/badge/Python-3.12-3776ab)
 ![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16-4169e1)
