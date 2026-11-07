@@ -136,6 +136,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Le compose utilise .env pour la substitution ${VAR} et
+      # .env.local comme env_file des conteneurs : on écrit les deux.
       - name: Créer le fichier .env de test
         run: |
           cat << 'EOF' > .env.local
@@ -145,9 +147,10 @@ jobs:
           POSTGRES_DB=advens_manager
           DATABASE_URL=postgresql://advens:advens_secret@postgres:5432/advens_manager
           REDIS_PASSWORD=ci_redis_test
-          REDIS_URL=redis://:ci_redis_test@redis:6379/0
+          REDIS_URL=redis://:ci_redis_test@redis:6379/2
           RATE_LIMIT_ENABLED=false
           EOF
+          cp .env.local .env
 
       - name: Démarrer les services
         run: docker compose up -d --build
