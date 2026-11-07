@@ -25,13 +25,13 @@ couvre de bout en bout : stock de tickets, ventes, caisse et audit.*
 
 | | |
 |---|---|
-| 🎟️ **Stock de tickets** | Import de lots (Excel/collage), détection de doublons, attribution FIFO aux vendeurs, stock par vendeur |
-| 💰 **Caisse** | Ventes Espèces / **Wave** (QR + numéro marchand) / Crédit, remise du ticket instantanée, partage WhatsApp |
-| 📱 **Accès smartphone** | Le backend sert l'app et génère un QR code — l'équipe le scanne et obtient la PWA sur son téléphone (« Ajouter à l'écran d'accueil ») |
-| 🖥️ **Vraie applique Ubuntu** | `install-ubuntu.sh` transforme la stack en programmes : services systemd + fenêtre dédiée dans le dock |
-| 🔐 **Sécurité d'abord** | RBAC strict, fichiers servis sous authentification, rate limiting, validation hostile-proof des uploads QR, journal d'audit complet — voir [Sécurité](#-sécurité) |
-| 📊 **Statistiques** | Tableau de bord temps réel, tendance des ventes, analyse heure par heure, rapports vendeurs, exports PDF/Excel |
-| ♻️ **Exploitation** | Workflow de réapprovisionnement à valider, clôtures de caisse, historique de ventes inaltérable, backups automatisés |
+|  **Stock de tickets** | Import de lots (Excel/collage), détection de doublons, attribution FIFO aux vendeurs, stock par vendeur |
+|  **Caisse** | Ventes Espèces / **Wave** (QR + numéro marchand) / Crédit, remise du ticket instantanée, partage WhatsApp |
+|  **Accès smartphone** | Le backend sert l'app et génère un QR code — l'équipe le scanne et obtient la PWA sur son téléphone (« Ajouter à l'écran d'accueil ») |
+|  **Vraie applique Ubuntu** | `install-ubuntu.sh` transforme la stack en programmes : services systemd + fenêtre dédiée dans le dock |
+|  **Sécurité d'abord** | RBAC strict, fichiers servis sous authentification, rate limiting, validation hostile-proof des uploads QR, journal d'audit complet — voir [Sécurité](#-sécurité) |
+|  **Statistiques** | Tableau de bord temps réel, tendance des ventes, analyse heure par heure, rapports vendeurs, exports PDF/Excel |
+|  **Exploitation** | Workflow de réapprovisionnement à valider, clôtures de caisse, historique de ventes inaltérable, backups automatisés |
 
 ## 📸 Captures d'écran
 
