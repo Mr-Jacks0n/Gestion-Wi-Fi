@@ -1,0 +1,35 @@
+name: Pages — Demo App
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages-demo"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Applies global workflow security settings to all sarif-file uploads
+      # (no-op for other artifacts).
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload demo (static simulation)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: demo
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
