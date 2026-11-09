@@ -1,4 +1,4 @@
-# Démo / Simulation — Adven's Manager
+# Démo / Simulation · Adven's Manager
 
 **Page de démonstration statique** de la plateforme de gestion de tickets
 Wi-Fi, servie sur [GitHub Pages](https://mr-jacks0n.github.io/Gestion-Wi-Fi/).

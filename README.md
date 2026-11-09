@@ -2,7 +2,7 @@
 
 <img src="docs/banner.png" alt="Adven's Manager banner" width="100%"/>
 
-**Wi-Fi ticket management & sales platform** for Adven's Center —
+**Wi-Fi ticket management & sales platform** for Adven's Center ·
 FastAPI · React TypeScript · PostgreSQL · Docker
 
 [![CI](https://github.com/Mr-Jacks0n/Gestion-Wi-Fi/actions/workflows/ci.yml/badge.svg)](https://github.com/Mr-Jacks0n/Gestion-Wi-Fi/actions/workflows/ci.yml)
@@ -16,7 +16,7 @@ FastAPI · React TypeScript · PostgreSQL · Docker
 [English](README.md) · [Français](README.fr.md)
 
 *Adven's Center runs a public Wi-Fi hotspot. Tickets are sold by
-laptop-installed vendors at the counter and on smartphones — this
+laptop-installed vendors at the counter and on smartphones · this
 platform covers ticket inventory, sales, cash register and audit
 end-to-end.*
 
@@ -25,7 +25,7 @@ end-to-end.*
 ---
 
 > 🎮 **Live demo (no setup)** : [interactive simulation on GitHub Pages](https://mr-jacks0n.github.io/Gestion-Wi-Fi/)
-> — the full UI with fictional data, running entirely in your browser.
+> · the full UI with fictional data, running entirely in your browser.
 > For a real deployment, see [Getting started](#getting-started).
 
 ## What it does
@@ -34,9 +34,9 @@ end-to-end.*
 |---|---|
 | **Ticket inventory** | Import lots of Wi-Fi tickets (Excel/paste), automatic duplicate detection, FIFO assignment to vendors, per-vendor stock |
 | **Point of sale** | Cash / **Wave** (QR code + merchant number) / credit sales, instant ticket delivery with WhatsApp sharing |
-| **Smartphone access** | The backend serves the app and generates a QR code — staff scan it and get the PWA on their phone (« Add to home screen ») |
+| **Smartphone access** | The backend serves the app and generates a QR code · staff scan it and get the PWA on their phone (« Add to home screen ») |
 | **Desktop app feel** | `install-ubuntu.sh` turns the stack into real Ubuntu programs: systemd services + dedicated app window in the dock |
-| **Security-first** | Strict RBAC, authenticated file uploads, rate limiting, hardened QR upload validation, full audit trail — see [Security](#-security) |
+| **Security-first** | Strict RBAC, authenticated file uploads, rate limiting, hardened QR upload validation, full audit trail · see [Security](#-security) |
 | **Insights** | Live dashboard, sales trend, hour-by-hour peak analysis, vendor performance reports, PDF/Excel exports |
 | **Ops** | Resupply approval workflow, register closure summaries, immutable sales history, automated backups |
 
@@ -50,7 +50,7 @@ end-to-end.*
 
 ## 🚀 Getting started
 
-### Option A — Docker Compose
+### Option A · Docker Compose
 
 ```bash
 cp backend/.env.example .env        # then edit SECRET_KEY etc.
@@ -64,10 +64,10 @@ docker compose up --build
 | API docs (dev only) | http://localhost:8000/docs |
 
 > The production compose uses hardened nginx + Docker Secrets:
-> `docker compose -f docker-compose.prod.yml up` — see
+> `docker compose -f docker-compose.prod.yml up` · see
 > `docker-compose.prod.yml` and `nginx/nginx.prod.conf`.
 
-### Option B — Local development (without Docker)
+### Option B · Local development (without Docker)
 
 ```bash
 # Backend
@@ -88,14 +88,14 @@ cd ../frontend && npm install
 | Web app | http://localhost:5173 |
 | API | http://localhost:8000 |
 
-### Option C — Ubuntu, one command (desktop app)
+### Option C · Ubuntu, one command (desktop app)
 
 ```bash
 ./install-ubuntu.sh
 ```
 
-Installs everything to `~/.local/share/advens-manager` — no root
-required — with user-level `systemd` services, a luncher in the
+Installs everything to `~/.local/share/advens-manager` · no root
+required · with user-level `systemd` services, a luncher in the
 Ubuntu app menu (dedicated window, no browser chrome), session
 autostart, and the **smartphone QR** printed at startup and shown
 in Settings. The phone opens the same single port:
@@ -140,7 +140,7 @@ http://<your-LAN-IP>:8000   ← scan → Add to home screen → app
 │   ├── app/services/       # business logic (auth, backup, tickets…)
 │   └── app/utils/          # PDF / Excel / audit helpers
 ├── frontend/               # React 19 + TypeScript + Vite (PWA)
-│   └── src/ (components, pages, store — Zustand)
+│   └── src/ (components, pages, store · Zustand)
 ├── nginx/                  # reverse proxy configs (dev hardened + prod TLS)
 ├── docs/                   # banner & screenshots
 ├── docker-compose.yml      # full stack (Postgres, Redis, Celery, nginx…)
@@ -174,21 +174,21 @@ http://<your-LAN-IP>:8000   ← scan → Add to home screen → app
 Completed security hardening (details in `SECURITY.md` and
 `CHANGELOG.md`):
 
-- **RBAC** — `ADMIN` / `TECHNICIAN` / `VENDOR` roles; finances, users
+- **RBAC** · `ADMIN` / `TECHNICIAN` / `VENDOR` roles; finances, users
   and settings require *strict admin*; vendors only ever see their own
   data.
-- **No token in URLs** — downloads use `Authorization` headers.
-- **Authenticated uploads** — public `StaticFiles(/uploads)` replaced
+- **No token in URLs** · downloads use `Authorization` headers.
+- **Authenticated uploads** · public `StaticFiles(/uploads)` replaced
   by an authenticated, traversal-safe router.
-- **Upload validation** — real magic-byte checking via Pillow +
+- **Upload validation** · real magic-byte checking via Pillow +
   PNG re-encoding (SVG-XSS / polyglot payloads die there).
-- **Rate limiting** — login 5/min, heavy endpoints 10/min, 100/min
+- **Rate limiting** · login 5/min, heavy endpoints 10/min, 100/min
   general; clean `429`s.
-- **Timing-safe login** — no username enumeration.
-- **Passphrase policy** — 8+ characters enforced.
-- **SQLi-safe search** — `%`/`_` escaping on `ILIKE` filters.
-- **CORS allow-list** — explicit origins.
-- **Secret hygiene** — `.env` files never committed; `SECRET_KEY`
+- **Timing-safe login** · no username enumeration.
+- **Passphrase policy** · 8+ characters enforced.
+- **SQLi-safe search** · `%`/`_` escaping on `ILIKE` filters.
+- **CORS allow-list** · explicit origins.
+- **Secret hygiene** · `.env` files never committed; `SECRET_KEY`
   fail-fast boot check; Docker Secrets in production; Redis password.
 
 ## 🗺️ Roadmap
@@ -201,9 +201,9 @@ Completed security hardening (details in `SECURITY.md` and
 
 ## 📄 License
 
-**Proprietary — Copyright © 2026 Adven's Center.** All rights
+**Proprietary · Copyright © 2026 Adven's Center.** All rights
 reserved. The source is published publicly for transparency and
-collaboration — **this does not make it open-source**: reuse outside
+collaboration · **this does not make it open-source**: reuse outside
 Adven's Center requires written permission. See
 [LICENSE](LICENSE) and [SECURITY.md](SECURITY.md).
 

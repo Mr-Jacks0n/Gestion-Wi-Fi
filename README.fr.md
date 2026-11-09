@@ -2,7 +2,7 @@
 
 <img src="docs/banner.png" alt="Bannière Adven's Manager" width="100%"/>
 
-**Plateforme de gestion et de vente de tickets Wi-Fi** pour Adven's Center —
+**Plateforme de gestion et de vente de tickets Wi-Fi** pour Adven's Center ·
 FastAPI · React TypeScript · PostgreSQL · Docker
 
 [![CI](https://github.com/Mr-Jacks0n/Gestion-Wi-Fi/actions/workflows/ci.yml/badge.svg)](https://github.com/Mr-Jacks0n/Gestion-Wi-Fi/actions/workflows/ci.yml)
@@ -14,7 +14,7 @@ FastAPI · React TypeScript · PostgreSQL · Docker
 [Français](README.fr.md) · [English](README.md)
 
 *Adven's Center exploite un hotspot Wi-Fi public. Les tickets sont vendus
-par des vendeurs au comptoir (ordinateur) ou sur smartphone — la plateforme
+par des vendeurs au comptoir (ordinateur) ou sur smartphone · la plateforme
 couvre de bout en bout : stock de tickets, ventes, caisse et audit.*
 
 </div>
@@ -22,7 +22,7 @@ couvre de bout en bout : stock de tickets, ventes, caisse et audit.*
 ---
 
 > 🎮 **Démo en ligne (sans installation)** : [simulation interactive sur GitHub Pages](https://mr-jacks0n.github.io/Gestion-Wi-Fi/)
-> — toute l'interface avec des données fictives, entièrement dans votre navigateur.
+> · toute l'interface avec des données fictives, entièrement dans votre navigateur.
 > Pour un déploiement réel, voir [Démarrage](#-démarrage).
 
 ## ✨ Fonctionnalités
@@ -31,9 +31,9 @@ couvre de bout en bout : stock de tickets, ventes, caisse et audit.*
 |---|---|
 |  **Stock de tickets** | Import de lots (Excel/collage), détection de doublons, attribution FIFO aux vendeurs, stock par vendeur |
 |  **Caisse** | Ventes Espèces / **Wave** (QR + numéro marchand) / Crédit, remise du ticket instantanée, partage WhatsApp |
-|  **Accès smartphone** | Le backend sert l'app et génère un QR code — l'équipe le scanne et obtient la PWA sur son téléphone (« Ajouter à l'écran d'accueil ») |
+|  **Accès smartphone** | Le backend sert l'app et génère un QR code · l'équipe le scanne et obtient la PWA sur son téléphone (« Ajouter à l'écran d'accueil ») |
 |  **Vraie applique Ubuntu** | `install-ubuntu.sh` transforme la stack en programmes : services systemd + fenêtre dédiée dans le dock |
-|  **Sécurité d'abord** | RBAC strict, fichiers servis sous authentification, rate limiting, validation hostile-proof des uploads QR, journal d'audit complet — voir [Sécurité](#-sécurité) |
+|  **Sécurité d'abord** | RBAC strict, fichiers servis sous authentification, rate limiting, validation hostile-proof des uploads QR, journal d'audit complet · voir [Sécurité](#-sécurité) |
 |  **Statistiques** | Tableau de bord temps réel, tendance des ventes, analyse heure par heure, rapports vendeurs, exports PDF/Excel |
 |  **Exploitation** | Workflow de réapprovisionnement à valider, clôtures de caisse, historique de ventes inaltérable, backups automatisés |
 
@@ -47,7 +47,7 @@ couvre de bout en bout : stock de tickets, ventes, caisse et audit.*
 
 ## 🚀 Démarrage
 
-### Option A — Docker Compose
+### Option A · Docker Compose
 
 ```bash
 cp backend/.env.example .env        # puis renseigner SECRET_KEY etc.
@@ -61,10 +61,10 @@ docker compose up --build
 | Api docs (dev seulement) | http://localhost:8000/docs |
 
 > La compose de production utilise nginx durci + Docker Secrets :
-> `docker compose -f docker-compose.prod.yml up` — voir
+> `docker compose -f docker-compose.prod.yml up` · voir
 > `docker-compose.prod.yml` et `nginx/nginx.prod.conf`.
 
-### Option B — Développement local (sans Docker)
+### Option B · Développement local (sans Docker)
 
 ```bash
 # Backend
@@ -85,13 +85,13 @@ cd ../frontend && npm install
 | Application | http://localhost:5173 |
 | API | http://localhost:8000 |
 
-### Option C — Ubuntu, une commande (applique de bureau)
+### Option C · Ubuntu, une commande (applique de bureau)
 
 ```bash
 ./install-ubuntu.sh
 ```
 
-Installe tout dans `~/.local/share/advens-manager` — sans droits root —
+Installe tout dans `~/.local/share/advens-manager` · sans droits root ·
 avec des services `systemd --user`, un lanceur **Adven's Manager** dans le
 menu Ubuntu (fenêtre dédiée, sans barre d'adresse), l'autostart de session
 et le **QR smartphone** imprimé au démarrage + affiché dans Paramètres.
@@ -137,7 +137,7 @@ http://<IP-LAN>:8000   ← scan → Ajouter à l'écran d'accueil → app
 │   ├── app/services/       # logique métier (auth, backup, tickets…)
 │   └── app/utils/          # helpers PDF / Excel / audit
 ├── frontend/               # React 19 + TypeScript + Vite (PWA)
-│   └── src/ (components, pages, store — Zustand)
+│   └── src/ (components, pages, store · Zustand)
 ├── nginx/                  # reverse proxy (dev durci + prod TLS)
 ├── docs/                   # bannière & captures d'écran
 ├── docker-compose.yml      # stack complète (Postgres, Redis, Celery, nginx…)
@@ -171,22 +171,22 @@ http://<IP-LAN>:8000   ← scan → Ajouter à l'écran d'accueil → app
 Durcissement de sécurité réalisé (détails dans `SECURITY.md` et
 `CHANGELOG.md`) :
 
-- **RBAC** — rôles `ADMIN` / `TECHNICIAN` / `VENDOR` ; finances, users et
+- **RBAC** · rôles `ADMIN` / `TECHNICIAN` / `VENDOR` ; finances, users et
   settings exigent un *admin strict* ; les vendeurs ne voient que leurs
   données.
-- **Aucun token dans les URL** — téléchargements avec en-tête
+- **Aucun token dans les URL** · téléchargements avec en-tête
   `Authorization`.
-- **Uploads authentifiés** — le `StaticFiles(/uploads)` public remplacé par
+- **Uploads authentifiés** · le `StaticFiles(/uploads)` public remplacé par
   un routeur authentifié, protégé contre la traversée.
-- **Validation des uploads** — vérification des *magic bytes* réel via
+- **Validation des uploads** · vérification des *magic bytes* réel via
   Pillow + ré-encodage PNG (SVG-XSS / polyglottes éliminés).
-- **Rate limiting** — login 5/min, endpoints lourds 10/min, général
+- **Rate limiting** · login 5/min, endpoints lourds 10/min, général
   100/min ; `429` propre.
-- **Login à temps constant** — pas d'énumération d'utilisateurs.
-- **Politique de mot de passe** — 8 caractères minimum imposés.
-- **Recherche SQLi-proof** — échappement `%`/`_` des filtres `ILIKE`.
-- **CORS en liste explicite** — origines déclarées.
-- **Hygiène des secrets** — `.env` jamais commités ; `SECRET_KEY`
+- **Login à temps constant** · pas d'énumération d'utilisateurs.
+- **Politique de mot de passe** · 8 caractères minimum imposés.
+- **Recherche SQLi-proof** · échappement `%`/`_` des filtres `ILIKE`.
+- **CORS en liste explicite** · origines déclarées.
+- **Hygiène des secrets** · `.env` jamais commités ; `SECRET_KEY`
   vérifiée au démarrage ; Docker Secrets en production ; Redis protégé.
 
 ## 🗺️ Roadmap
@@ -199,8 +199,8 @@ Durcissement de sécurité réalisé (détails dans `SECURITY.md` et
 
 ## 📄 Licence
 
-**Propriétaire — Copyright © 2026 Adven's Center.** Tous droits réservés.
-Le code est publié pour la transparence et la collaboration — **ce n'est
+**Propriétaire · Copyright © 2026 Adven's Center.** Tous droits réservés.
+Le code est publié pour la transparence et la collaboration · **ce n'est
 pas un projet open-source** : toute réutilisation hors Adven's Center
 nécessite une autorisation écrite. Voir [LICENSE](LICENSE) et
 [SECURITY.md](SECURITY.md).

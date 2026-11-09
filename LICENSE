@@ -1,6 +1,6 @@
 Copyright (c) 2026 Adven's Center. All rights reserved.
 
-Adven's Manager — Wi-Fi ticket management & sales platform
+Adven's Manager · Wi-Fi ticket management & sales platform
 Source code, designs and documentation.
 
 ---------------------------------------------------------------------
@@ -38,7 +38,7 @@ THIRD-PARTY COMPONENTS
 ----------------------
 
 This software builds upon third-party packages licensed under their
-own terms — notably FastAPI, SQLAlchemy, Pydantic, Alembic, Pillow,
+own terms · notably FastAPI, SQLAlchemy, Pydantic, Alembic, Pillow,
 qrcode, React, TypeScript, Vite, Zustand, PostgreSQL, Redis, Celery,
 Nginx and Docker. Nothing in this license restricts those components
 under their respective open-source licenses. The corresponding

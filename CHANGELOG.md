@@ -3,7 +3,7 @@
 All notable changes to **Adven's Manager** are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [1.1.0] — 2026-11
+## [1.1.0] · 2026-11
 
 ### Security (hardening phase 1 & 2)
 - **Strict RBAC**: finances (`/api/expenses`), users, settings and
@@ -13,7 +13,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `/hourly-trend`), reports and ticket search properly scoped per
   vendor.
 - **Removed tokens-from-URL endpoints** (`/api/reports/download`,
-  `/api/settings/download-backup`) — every download now requires the
+  `/api/settings/download-backup`) · every download now requires the
   `Authorization` header.
 - **`/uploads` is no longer public**: replaced by an authenticated
   `GET /api/uploads/{path}` route (JWT required, traversal-protected,
@@ -23,7 +23,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   server-generated filenames.
 - **Rate limiting** everywhere heavy: login 5/min, reports &
   backups 10/min, general 100/min; proper `429` responses.
-- **Timing-safe login** (dummy bcrypt hash) — prevents username
+- **Timing-safe login** (dummy bcrypt hash) · prevents username
   enumeration.
 - **Password policy**: minimum 8 characters (creation, change, admin
   reset).
@@ -54,7 +54,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - nginx dev config reorganized (headers repeated per location,
   `client_max_body_size`, `/uploads` & `/docs` blocked).
 
-## [1.0.0] — 2026-07
+## [1.0.0] · 2026-07
 
 ### Added
 - Initial release: Wi-Fi ticket import (batches, duplicate

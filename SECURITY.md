@@ -1,4 +1,4 @@
-# Security Policy — Adven's Manager
+# Security Policy · Adven's Manager
 
 **Supported version:** the latest commit on `main`.
 
@@ -6,7 +6,7 @@
 
 Please **do not open a public issue** for a security problem.
 
-1. Preferred: use GitHub **Private vulnerability reporting** —
+1. Preferred: use GitHub **Private vulnerability reporting** ·
    `Security ▸ Report a vulnerability` on this repository.
 2. If impossible, contact the maintainer through the repository
    profile page.
@@ -23,7 +23,7 @@ exploited issues.
 |---|---|
 | Authentication | JWT (HS256, 8 h expiry), bcrypt password hashing |
 | Password policy | minimum 8 characters enforced server-side (NIST SP 800-63B) |
-| Authorization | RBAC — `ADMIN`, `TECHNICIAN`, `VENDOR` with *strict-admin* dependency for finances, users & settings |
+| Authorization | RBAC · `ADMIN`, `TECHNICIAN`, `VENDOR` with *strict-admin* dependency for finances, users & settings |
 | Rate limiting | slowapi-backed limits on login (5/min), reports & backups (10/min), general API (100/min) |
 | Time-safety | login always validates against a dummy hash to prevent username enumeration |
 | File uploads | Pillow magic-byte validation + PNG re-encoding (SVG/polyglot hostile payloads rejected), size cap, server-generated filenames |
@@ -32,7 +32,7 @@ exploited issues.
 | Secrets | `.env` git-ignored; `SECRET_KEY` fail-fast on boot if missing/weak; Docker secrets (`*_FILE`) in production compose |
 | Transport | production nginx: TLS 1.2/1.3 only, HSTS, CSP, `nosniff`, `X-Frame-Options`, Referrer-Policy, Permissions-Policy; `/docs` & `/openapi.json` blocked |
 | Backup integrity | persistent tamper-proof sales history (no delete), audit log of every mutation |
-| Tokens in URLs | none — all downloads use `Authorization` headers |
+| Tokens in URLs | none · all downloads use `Authorization` headers |
 
 ## Operational requirements
 
