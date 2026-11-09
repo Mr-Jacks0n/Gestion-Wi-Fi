@@ -20,8 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Applies global workflow security settings to all sarif-file uploads
-      # (no-op for other artifacts).
+      # Configuration du site Pages (doit précéder l'upload de l'artefact)
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
